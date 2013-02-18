@@ -11,11 +11,14 @@ from trytond.model import ModelSQL, ModelView, fields
 from trytond.pyson import Eval, Bool
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
+from trytond.pool import PoolMeta
+
+__all__ = ['NereidStaticFolder', 'NereidStaticFile']
+__metaclass__ = PoolMeta
 
 
 class NereidStaticFolder(ModelSQL, ModelView):
-    _name = "nereid.static.folder"
-    _description = __doc__
+    __name__ = "nereid.static.folder"
     _rec_name = "folder_name"
 
     s3_use_bucket = fields.Boolean("Use S3 Bucket?")
@@ -36,39 +39,45 @@ class NereidStaticFolder(ModelSQL, ModelView):
         states={'required': Bool(Eval('s3_use_bucket'))}
     )
 
-    def __init__(self):
-        super(NereidStaticFolder, self).__init__()
+    @classmethod
+    def __setup__(cls):
+        super(NereidStaticFolder, cls).__setup__()
 
-        self._constraints += [
+        cls._constraints += [
             ('check_cloudfront_cname', 'invalid_cname'),
         ]
-        self._error_messages.update({
+        cls._error_messages.update({
             "invalid_cname": "Cloudfront CNAME with '/' at the end is not " +
                 "allowed",
         })
 
-    def default_s3_cloudfront_cname(self):
+    def get_bucket(self):
+        '''
+        Return an S3 bucket for the static file
+        '''
+        s3_conn = S3Connection(
+            self.s3_access_key, self.s3_secret_key
+        )
+        return s3_conn.get_bucket(self.s3_bucket_name)
+
+    @staticmethod
+    def default_s3_cloudfront_cname():
         """
         Sets default for Cloudfront CNAME
         """
         return "http://your-domain.cloudfront.net"
 
-    def check_cloudfront_cname(self, ids):
+    def check_cloudfront_cname(self):
         """
         Checks for '/' at the end of Cloudfront CNAME
         """
-        for folder in self.browse(ids):
-            if folder.s3_cloudfront_cname.endswith('/'):
-                return False
+        if self.s3_cloudfront_cname.endswith('/'):
+            return False
         return True
 
 
-NereidStaticFolder()
-
-
 class NereidStaticFile(ModelSQL, ModelView):
-    _name = "nereid.static.file"
-    _description = __doc__
+    __name__ = "nereid.static.file"
 
     folder = fields.Many2One(
         'nereid.static.folder', 'Folder', select=True, required=True,
@@ -85,112 +94,100 @@ class NereidStaticFile(ModelSQL, ModelView):
         fields.Boolean("S3 Bucket?"), 'get_is_s3_bucket'
     )
 
-    def _get_url(self, static_file):
+    def get_url(self, name):
         """
         Return the URL for the given static file
 
-        :param static_file: Browse Record of the static file
+        :param name: Field name
         """
-        if static_file.type == 's3':
+        if self.type == 's3':
             return '/'.join(
-                [static_file.folder.s3_cloudfront_cname, static_file.name]
+                [self.folder.s3_cloudfront_cname, self.name]
             )
-        return super(NereidStaticFile, self)._get_url(static_file)
+        return super(NereidStaticFile, self).get_url(name)
 
-    def _set_file_binary(self, static_file, value):
+    def _set_file_binary(self, value):
         """
         Stores the file to amazon s3
 
         :param static_file: Browse record of the static file
+        :param value: The value to set
         """
         if not value:
             return
-        if static_file.type == "s3":
-            bucket = self.get_bucket(static_file)
+        if self.type == "s3":
+            bucket = self.folder.get_bucket()
             key = Key(bucket)
-            key.key = static_file.name
+            key.key = self.name
             return key.set_contents_from_string(value)
-        return super(NereidStaticFile, self)._set_file_binary(
-            static_file, value
-        )
+        return super(NereidStaticFile, self)._set_file_binary(value)
 
-    def _get_file_binary(self, static_file):
+    def get_file_binary(self, name):
         '''
         Getter for the binary_file field. This fetches the file from the
         Amazon s3
 
-        :param ids: the ids of the sales
-        :return: Dictionary with ID as key and file buffer as value
+        :param name: Field name
+        :return: File buffer
         '''
-        if static_file.type == "s3":
-            bucket = self.get_bucket(static_file)
+        if self.type == "s3":
+            bucket = self.folder.get_bucket()
             key = Key(bucket)
-            key.key = static_file.name
+            key.key = self.name
             return buffer(key.get_contents_as_string())
-        return super(NereidStaticFile, self)._get_file_binary(static_file)
+        return super(NereidStaticFile, self).get_file_binary(name)
 
-    def _get_file_path(self, static_file):
+    def get_file_path(self, name):
         """
         Returns path for given static file
 
         :param static_file: Browse record of the static file
         """
-        if static_file.type == "s3":
+        if self.type == "s3":
             return '/'.join(
-                [static_file.folder.s3_cloudfront_cname, static_file.name]
+                [self.folder.s3_cloudfront_cname, self.name]
             )
-        return super(NereidStaticFile, self)._get_file_path(static_file)
+        return super(NereidStaticFile, self).get_file_path(name)
 
-    def on_change_type(self, vals):
+    def on_change_type(self):
         """
         Changes the value of functional field when type is changed
 
-        :param vals: Dictionary of fields and their values
         :return: Updated value of functional field
         """
         return {
-            'is_s3_bucket': vals['type'] == 's3'
+            'is_s3_bucket': self['type'] == 's3'
         }
 
-    def get_bucket(self, static_file):
-        '''
-        Return an S3 bucket for the static file
-        '''
-        s3_conn = S3Connection(
-            static_file.folder.s3_access_key, static_file.folder.s3_secret_key
-        )
-        return s3_conn.get_bucket(static_file.folder.s3_bucket_name)
-
-    def get_is_s3_bucket(self, ids, name):
+    @classmethod
+    def get_is_s3_bucket(cls, files, name):
         """
         Gets value of s3_use_bucket of folder
 
-        :param ids: List of ids
-        "param name: Field name
-        :return: A dictionary with value for each ids
+        :param files: Browse record of static file
+        :param name: Field name
+        :return: value of field
         """
         res = {}
-        for file in self.browse(ids):
+        for file in files:
             res[file.id] = bool(file.folder.s3_use_bucket)
         return res
 
-    def check_use_s3_bucket(self, ids):
+    def check_use_s3_bucket(self):
         """
         Checks if type is S3 then folder must have use_s3_bucket
         """
-        for files in self.browse(ids):
-            if files.type == "s3" and not files.folder.s3_use_bucket:
-                return False
+        if self.type == "s3" and not self.folder.s3_use_bucket:
+            return False
         return True
 
-    def __init__(self):
-        super(NereidStaticFile, self).__init__()
+    @classmethod
+    def __setup__(cls):
+        super(NereidStaticFile, cls).__setup__()
 
-        self._constraints += [
+        cls._constraints += [
             ('check_use_s3_bucket', 's3_bucket_required'),
         ]
-        self._error_messages.update({
+        cls._error_messages.update({
             "s3_bucket_required": "Folder must have s3 bucket if type is 'S3'",
         })
-
-NereidStaticFile()

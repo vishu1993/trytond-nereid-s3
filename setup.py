@@ -8,6 +8,7 @@
 """
 from setuptools import setup, Command
 import re
+import ConfigParser
 
 
 class XMLTests(Command):
@@ -81,8 +82,13 @@ class RunAudit(Command):
             print "No problems found in sourcecode."
             sys.exit(0)
 
+config = ConfigParser.ConfigParser()
+config.readfp(open('tryton.cfg'))
+info = dict(config.items('tryton'))
 
-info = eval(open('__tryton__.py').read())
+for key in ('depends', 'extras_depend', 'xml'):
+    if key in info:
+        info[key] = info[key].strip().splitlines()
 major_version, minor_version, _ = info.get('version', '0.0.1').split('.', 2)
 major_version = int(major_version)
 minor_version = int(minor_version)
@@ -94,7 +100,7 @@ requires = [
     'simplejson',
 ]
 for dep in info.get('depends', []):
-    if not re.match(r'(ir|res|workflow|webdav|nereid)(\W|$)', dep):
+    if not re.match(r'(ir|res|webdav)(\W|$)', dep):
         requires.append('trytond_%s >= %s.%s, < %s.%s' %
                 (dep, major_version, minor_version, major_version,
                     minor_version + 1))
@@ -115,8 +121,8 @@ setup(name='trytond_%s' % module_name,
         'trytond.modules.%s.tests' % module_name,
     ],
     package_data={
-        'trytond.modules.%s' % module_name: info.get('xml', []) \
-                + info.get('translation', []),
+        'trytond.modules.nereid_s3': info.get('xml', []) \
+            + ['tryton.cfg']
     },
     classifiers=[
         'Development Status :: 5 - Production/Stable',
@@ -129,7 +135,8 @@ setup(name='trytond_%s' % module_name,
         'License :: OSI Approved :: GNU General Public License (GPL)',
         'Natural Language :: English',
         'Operating System :: OS Independent',
-        'Programming Language :: Python',
+        'Programming Language :: Python :: 2.6',
+        'Programming Language :: Python :: 2.7',
         'Topic :: Office/Business',
     ],
     license='GPL-3',

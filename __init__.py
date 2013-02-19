@@ -6,4 +6,11 @@
 :copyright: (c) 2013 by Openlabs Technologies & Consulting (P) Limited.
 :license: GPLv3, see LICENSE for more details
 '''
-import static_file
+from trytond.pool import Pool
+from .static_file import *
+
+def register():
+    Pool.register(
+        NereidStaticFolder,
+        NereidStaticFile,
+        module='nereid_s3', type_='model')

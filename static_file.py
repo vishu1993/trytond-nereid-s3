@@ -35,6 +35,7 @@ class NereidStaticFolder(ModelSQL, ModelView):
         "S3 Cloudfront CNAME",
         states={'required': Bool(Eval('s3_use_bucket'))}
     )
+    s3_object_prefix = fields.Char("S3 Object Prefix")
 
     def __init__(self):
         super(NereidStaticFolder, self).__init__()
@@ -84,6 +85,21 @@ class NereidStaticFile(ModelSQL, ModelView):
     is_s3_bucket = fields.Function(
         fields.Boolean("S3 Bucket?"), 'get_is_s3_bucket'
     )
+    s3_key = fields.Function(fields.Char("S3 key"), "get_s3_key")
+
+    def get_s3_key(self, ids, name):
+        """
+        Returns s3 key for static file
+        """
+        res = {}
+        for file in self.browse(ids):
+            if file.folder.s3_object_prefix:
+                res[file.id] = '/'.join(
+                    [file.folder.s3_object_prefix, file.name]
+                )
+            else:
+                res[file.id] = file.name
+        return res
 
     def _get_url(self, static_file):
         """
@@ -93,7 +109,7 @@ class NereidStaticFile(ModelSQL, ModelView):
         """
         if static_file.type == 's3':
             return '/'.join(
-                [static_file.folder.s3_cloudfront_cname, static_file.name]
+                [static_file.folder.s3_cloudfront_cname, static_file.s3_key]
             )
         return super(NereidStaticFile, self)._get_url(static_file)
 
@@ -108,7 +124,7 @@ class NereidStaticFile(ModelSQL, ModelView):
         if static_file.type == "s3":
             bucket = self.get_bucket(static_file)
             key = Key(bucket)
-            key.key = static_file.name
+            key.key = static_file.s3_key
             return key.set_contents_from_string(value)
         return super(NereidStaticFile, self)._set_file_binary(
             static_file, value
@@ -125,7 +141,7 @@ class NereidStaticFile(ModelSQL, ModelView):
         if static_file.type == "s3":
             bucket = self.get_bucket(static_file)
             key = Key(bucket)
-            key.key = static_file.name
+            key.key = static_file.s3_key
             return buffer(key.get_contents_as_string())
         return super(NereidStaticFile, self)._get_file_binary(static_file)
 
@@ -137,7 +153,7 @@ class NereidStaticFile(ModelSQL, ModelView):
         """
         if static_file.type == "s3":
             return '/'.join(
-                [static_file.folder.s3_cloudfront_cname, static_file.name]
+                [static_file.folder.s3_cloudfront_cname, static_file.s3_key]
             )
         return super(NereidStaticFile, self)._get_file_path(static_file)
 

@@ -21,6 +21,8 @@
                             <field name="s3_secret_key"/>
                             <label name="s3_bucket_name"/>
                             <field name="s3_bucket_name"/>
+                            <label name="s3_object_prefix"/>
+                            <field name="s3_object_prefix"/>
                             <group id="cloudfront_information" string="Cloudfront Information" colspan="4" col="4">
                                 <label name="s3_cloudfront_cname"/>
                                 <field name="s3_cloudfront_cname"/>

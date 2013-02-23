@@ -38,6 +38,7 @@ class NereidStaticFolder(ModelSQL, ModelView):
         "S3 Cloudfront CNAME",
         states={'required': Bool(Eval('s3_use_bucket'))}
     )
+    s3_object_prefix = fields.Char("S3 Object Prefix")
 
     @classmethod
     def __setup__(cls):
@@ -93,6 +94,16 @@ class NereidStaticFile(ModelSQL, ModelView):
     is_s3_bucket = fields.Function(
         fields.Boolean("S3 Bucket?"), 'get_is_s3_bucket'
     )
+    s3_key = fields.Function(fields.Char("S3 key"), "get_s3_key")
+
+    def get_s3_key(self, name):
+        """
+        Returns s3 key for static file
+        """
+        if self.folder.s3_object_prefix:
+            return '/'.join([self.folder.s3_object_prefix, self.name])
+        else:
+            return self.name
 
     def get_url(self, name):
         """
@@ -102,7 +113,7 @@ class NereidStaticFile(ModelSQL, ModelView):
         """
         if self.type == 's3':
             return '/'.join(
-                [self.folder.s3_cloudfront_cname, self.name]
+                [self.folder.s3_cloudfront_cname, self.s3_key]
             )
         return super(NereidStaticFile, self).get_url(name)
 
@@ -118,7 +129,7 @@ class NereidStaticFile(ModelSQL, ModelView):
         if self.type == "s3":
             bucket = self.folder.get_bucket()
             key = Key(bucket)
-            key.key = self.name
+            key.key = self.s3_key
             return key.set_contents_from_string(value)
         return super(NereidStaticFile, self)._set_file_binary(value)
 
@@ -133,7 +144,7 @@ class NereidStaticFile(ModelSQL, ModelView):
         if self.type == "s3":
             bucket = self.folder.get_bucket()
             key = Key(bucket)
-            key.key = self.name
+            key.key = self.s3_key
             return buffer(key.get_contents_as_string())
         return super(NereidStaticFile, self).get_file_binary(name)
 
@@ -145,7 +156,7 @@ class NereidStaticFile(ModelSQL, ModelView):
         """
         if self.type == "s3":
             return '/'.join(
-                [self.folder.s3_cloudfront_cname, self.name]
+                [self.folder.s3_cloudfront_cname, self.s3_key]
             )
         return super(NereidStaticFile, self).get_file_path(name)
 

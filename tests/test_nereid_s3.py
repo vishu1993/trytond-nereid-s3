@@ -29,8 +29,8 @@ class TestNereidS3(unittest.TestCase):
 
     def setUp(self):
         trytond.tests.test_tryton.install_module('nereid_s3')
-        self.static_file_obj = POOL.get('nereid.static.file')
-        self.static_folder_obj = POOL.get('nereid.static.folder')
+        self.static_file = POOL.get('nereid.static.file')
+        self.static_folder = POOL.get('nereid.static.folder')
 
     def test0005views(self):
         '''
@@ -52,7 +52,7 @@ class TestNereidS3(unittest.TestCase):
                     context=CONTEXT) as transaction:
 
             # Create folder for amazon s3
-            folder_id = self.static_folder_obj.create({
+            folder = self.static_folder.create({
                 'folder_name': 's3store',
                 'description': 'S3 Folder',
                 's3_use_bucket': True,
@@ -61,22 +61,21 @@ class TestNereidS3(unittest.TestCase):
                 's3_bucket_name': 'tryton-test-s3',
                 's3_cloudfront_cname': 'http://d84c7ijfqqzfi.cloudfront.net',
             })
-            self.assert_(folder_id)
+            self.assert_(folder.id)
 
-            s3_folder = self.static_folder_obj.search([
+            s3_folder = self.static_folder.search([
                 ('s3_use_bucket', '=', True)
             ])[0]
 
             # Create static file for amazon s3 bucket
-            file_id = self.static_file_obj.create({
+            file = self.static_file.create({
                 'name': 'testfile.png',
                 'type': 's3',
                 'folder': s3_folder,
                 'file_binary': buffer('testfile')
             })
-            self.assert_(file_id)
+            self.assert_(file.id)
 
-            file = self.static_file_obj.browse(file_id)
             self.assertEqual(
                 file.file_binary, buffer('testfile')
             )

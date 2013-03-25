@@ -96,7 +96,6 @@ module_name = 'nereid_s3'
 
 requires = [
     'nereid',
-    'raven',
     'simplejson',
 ]
 for dep in info.get('depends', []):

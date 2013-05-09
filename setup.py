@@ -96,8 +96,8 @@ module_name = 'nereid_s3'
 
 requires = [
     'nereid',
-    'raven',
     'simplejson',
+    'boto',
 ]
 for dep in info.get('depends', []):
     if not re.match(r'(ir|res|webdav)(\W|$)', dep):

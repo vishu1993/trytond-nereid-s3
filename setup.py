@@ -95,7 +95,6 @@ minor_version = int(minor_version)
 module_name = 'nereid_s3'
 
 requires = [
-    'nereid',
     'simplejson',
     'boto',
 ]

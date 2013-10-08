@@ -7,17 +7,17 @@
     :copyright: (c) 2013 by Openlabs Technologies & Consulting (P) Limited
     :license: BSD, see LICENSE for more details.
 """
-from trytond.model import ModelSQL, ModelView, fields
+from trytond.model import fields
 from trytond.pyson import Eval, Bool
-from boto.s3.connection import S3Connection
-from boto.s3.key import Key
+from boto.s3 import connection
+from boto.s3 import key
 from trytond.pool import PoolMeta
 
 __all__ = ['NereidStaticFolder', 'NereidStaticFile']
 __metaclass__ = PoolMeta
 
 
-class NereidStaticFolder(ModelSQL, ModelView):
+class NereidStaticFolder:
     __name__ = "nereid.static.folder"
     _rec_name = "folder_name"
 
@@ -44,19 +44,27 @@ class NereidStaticFolder(ModelSQL, ModelView):
     def __setup__(cls):
         super(NereidStaticFolder, cls).__setup__()
 
-        cls._constraints += [
-            ('check_cloudfront_cname', 'invalid_cname'),
-        ]
         cls._error_messages.update({
             "invalid_cname": "Cloudfront CNAME with '/' at the end is not " +
                 "allowed",
         })
 
+    @classmethod
+    def validate(cls, records):
+        """
+        Checks if cloudfront cname ends with '/'
+
+        :param records: List of active records
+        """
+        super(NereidStaticFolder, cls).validate(records)
+        for record in records:
+            record.check_cloudfront_cname()
+
     def get_bucket(self):
         '''
         Return an S3 bucket for the static file
         '''
-        s3_conn = S3Connection(
+        s3_conn = connection.S3Connection(
             self.s3_access_key, self.s3_secret_key
         )
         return s3_conn.get_bucket(self.s3_bucket_name)
@@ -73,11 +81,10 @@ class NereidStaticFolder(ModelSQL, ModelView):
         Checks for '/' at the end of Cloudfront CNAME
         """
         if self.s3_cloudfront_cname.endswith('/'):
-            return False
-        return True
+            return self.raise_user_error('invalid_cname')
 
 
-class NereidStaticFile(ModelSQL, ModelView):
+class NereidStaticFile:
     __name__ = "nereid.static.file"
 
     folder = fields.Many2One(
@@ -128,9 +135,9 @@ class NereidStaticFile(ModelSQL, ModelView):
             return
         if self.type == "s3":
             bucket = self.folder.get_bucket()
-            key = Key(bucket)
-            key.key = self.s3_key
-            return key.set_contents_from_string(value)
+            s3key = key.Key(bucket)
+            s3key.key = self.s3_key
+            return s3key.set_contents_from_string(value)
         return super(NereidStaticFile, self)._set_file_binary(value)
 
     def get_file_binary(self, name):
@@ -143,9 +150,9 @@ class NereidStaticFile(ModelSQL, ModelView):
         '''
         if self.type == "s3":
             bucket = self.folder.get_bucket()
-            key = Key(bucket)
-            key.key = self.s3_key
-            return buffer(key.get_contents_as_string())
+            s3key = key.Key(bucket)
+            s3key.key = self.s3_key
+            return buffer(s3key.get_contents_as_string())
         return super(NereidStaticFile, self).get_file_binary(name)
 
     def get_file_path(self, name):
@@ -189,16 +196,23 @@ class NereidStaticFile(ModelSQL, ModelView):
         Checks if type is S3 then folder must have use_s3_bucket
         """
         if self.type == "s3" and not self.folder.s3_use_bucket:
-            return False
-        return True
+            return self.raise_user_error('s3_bucket_required')
+
+    @classmethod
+    def validate(cls, records):
+        """
+        Checks if use_s3_bucket is True for static file with type s3
+
+        :param records: List of active records
+        """
+        super(NereidStaticFile, cls).validate(records)
+        for record in records:
+            record.check_use_s3_bucket()
 
     @classmethod
     def __setup__(cls):
         super(NereidStaticFile, cls).__setup__()
 
-        cls._constraints += [
-            ('check_use_s3_bucket', 's3_bucket_required'),
-        ]
         cls._error_messages.update({
             "s3_bucket_required": "Folder must have s3 bucket if type is 'S3'",
         })

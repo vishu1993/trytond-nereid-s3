@@ -18,7 +18,7 @@ def suite():
     test_suite = trytond.tests.test_tryton.suite()
     test_suite.addTests([
         unittest.TestLoader().loadTestsFromTestCase(TestNereidS3)
-        ])
+    ])
     return test_suite
 
 if __name__ == '__main__':

@@ -10,8 +10,11 @@
 
 import sys
 import os
-DIR = os.path.abspath(os.path.normpath(os.path.join(__file__,
-    '..', '..', '..', '..', '..', 'trytond')))
+DIR = os.path.abspath(
+    os.path.normpath(
+        os.path.join(__file__, '..', '..', '..', '..', '..', 'trytond')
+    )
+)
 if os.path.isdir(DIR):
     sys.path.insert(0, os.path.dirname(DIR))
 
@@ -48,8 +51,7 @@ class TestNereidS3(unittest.TestCase):
         """
         Checks that file is saved to amazon s3
         """
-        with Transaction().start(DB_NAME, USER,
-                    context=CONTEXT) as transaction:
+        with Transaction().start(DB_NAME, USER, context=CONTEXT):
 
             # Create folder for amazon s3
             folder = self.static_folder.create({

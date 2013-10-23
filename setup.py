@@ -55,7 +55,6 @@ minor_version = int(minor_version)
 module_name = 'nereid_s3'
 
 requires = [
-    'nereid>=2.6, <2.7',
     'simplejson',
     'boto',
 ]
@@ -111,6 +110,9 @@ setup(
     [trytond.modules]
     %s = trytond.modules.%s
     """ % (module_name, module_name),
+    tests_require=[
+        'mock',
+    ],
     test_suite='tests',
     cmdclass={
         'xmltests': XMLTests,

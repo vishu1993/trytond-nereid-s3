@@ -7,7 +7,8 @@
 :license: GPLv3, see LICENSE for more details
 '''
 from trytond.pool import Pool
-from .static_file import *
+from static_file import NereidStaticFolder, NereidStaticFile
+
 
 def register():
     Pool.register(

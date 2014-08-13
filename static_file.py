@@ -137,7 +137,7 @@ class NereidStaticFile:
             bucket = self.folder.get_bucket()
             s3key = key.Key(bucket)
             s3key.key = self.s3_key
-            return s3key.set_contents_from_string(value)
+            return s3key.set_contents_from_string(value[:])
         return super(NereidStaticFile, self)._set_file_binary(value)
 
     def get_file_binary(self, name):

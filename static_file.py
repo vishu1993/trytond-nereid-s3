@@ -46,7 +46,7 @@ class NereidStaticFolder:
 
         cls._error_messages.update({
             "invalid_cname": "Cloudfront CNAME with '/' at the end is not " +
-                "allowed",
+            "allowed",
         })
 
     @classmethod
@@ -96,7 +96,7 @@ class NereidStaticFile:
         ('local', 'Local File'),
         ('remote', 'Remote File'),
         ('s3', 'S3'),
-    ], 'File Type', on_change=['type', 's3_bucket'])
+    ], 'File Type')
 
     is_s3_bucket = fields.Function(
         fields.Boolean("S3 Bucket?"), 'get_is_s3_bucket'
@@ -167,6 +167,7 @@ class NereidStaticFile:
             )
         return super(NereidStaticFile, self).get_file_path(name)
 
+    @fields.depends('type', 's3_bucket')
     def on_change_type(self):
         """
         Changes the value of functional field when type is changed

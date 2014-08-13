@@ -6,9 +6,42 @@
     :copyright: (c) 2013 by Openlabs Technologies & Consulting (P) Limited
     :license: BSD, see LICENSE for more details.
 """
-from setuptools import setup, Command
+import sys
+import os
+import unittest
 import re
 import ConfigParser
+from setuptools import setup, Command
+
+
+class SQLiteTest(Command):
+    """
+    Run the tests on SQLite
+    """
+    description = "Run tests on SQLite"
+
+    user_options = []
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        if self.distribution.tests_require:
+            self.distribution.fetch_build_eggs(self.distribution.tests_require)
+
+        from trytond.config import CONFIG
+        CONFIG['db_type'] = 'sqlite'
+        os.environ['DB_NAME'] = ':memory:'
+
+        from tests import suite
+        test_result = unittest.TextTestRunner(verbosity=3).run(suite())
+
+        if test_result.wasSuccessful():
+            sys.exit(0)
+        sys.exit(-1)
 
 
 class XMLTests(Command):
@@ -86,7 +119,7 @@ setup(
     ],
     package_data={
         'trytond.modules.nereid_s3': info.get('xml', [])
-            + ['tryton.cfg']
+        + ['tryton.cfg']
     },
     classifiers=[
         'Development Status :: 5 - Production/Stable',
@@ -116,6 +149,7 @@ setup(
     test_suite='tests',
     cmdclass={
         'xmltests': XMLTests,
+        'test': SQLiteTest,
     },
     test_loader='trytond.test_loader:Loader',
 )

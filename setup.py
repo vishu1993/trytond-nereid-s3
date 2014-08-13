@@ -106,7 +106,7 @@ requires.append(
 )
 
 setup(
-    name='trytond_%s' % module_name,
+    name='openlabs_%s' % module_name,
     version=info.get('version', '0.0.1'),
     description=info.get('description', ''),
     author=info.get('author', ''),

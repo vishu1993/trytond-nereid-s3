@@ -86,8 +86,10 @@ setup(
         'trytond.modules.%s.tests' % module_name,
     ],
     package_data={
-        'trytond.modules.nereid_s3': info.get('xml', [])
-        + ['tryton.cfg', 'view/*.xml']
+        'trytond.modules.nereid_s3': info.get('xml', []) +
+        ['tryton.cfg'],
+        'trytond.modules.nereid_s3': info.get('xml', []) +
+        ['tryton.cfg', 'view/*.xml']
     },
     classifiers=[
         'Development Status :: 5 - Production/Stable',

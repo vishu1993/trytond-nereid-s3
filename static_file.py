@@ -60,13 +60,16 @@ class NereidStaticFolder:
         for record in records:
             record.check_cloudfront_cname()
 
+    def get_s3_connection(self):
+        return connection.S3Connection(
+            self.s3_access_key, self.s3_secret_key
+        )
+
     def get_bucket(self):
         '''
         Return an S3 bucket for the static file
         '''
-        s3_conn = connection.S3Connection(
-            self.s3_access_key, self.s3_secret_key
-        )
+        s3_conn = self.get_s3_connection()
         return s3_conn.get_bucket(self.s3_bucket_name)
 
     @staticmethod
